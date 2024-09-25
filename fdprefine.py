@@ -25,13 +25,9 @@ class refinefdoubleprime():
     #   print("Cannot find Phenix installation. Try to run module load phenix")
 
     self.mtzIn = input("File location for MTZ: ")
-    #self.mtzIn = "102446901_nr27313v335_xlys313keV100umV1p5MGy1_free.mtz"
     self.pdbIn = input("File location for PDB: ")
-    #self.pdbIn = "1lz8.pdb"
     self.projIn = input("Name of project: ")
-    #self.projIn = "lysi04"
     genMonomerLib = input("Do you have ligands in the PDB file? (y/n) ").lower()
-    #genMonomerLib = "n"
     if genMonomerLib == "y":
       with Halo(text="Generating monomer library, this should only take a few minutes...", spinner="toggle"):
         logFile = f"monomerlib_output.log"
@@ -46,7 +42,6 @@ class refinefdoubleprime():
 
 
     elementsToTry = input("Which elements to try, comma separated: ")
-    #elementsToTry = "Ca, Cl, Fe, K, Mg, Mn, Na, Ni, P, S"
     self.elements = [x.strip() for x in elementsToTry.split(',')]
 
     mtzInfo = reflection_file_reader.any_reflection_file(self.mtzIn)
@@ -158,7 +153,6 @@ class refinefdoubleprime():
     pio.write_html(fig, f'{self.projIn}.html')
 
 
-  # Create bpos eff file
   def runBPos(self, pdbIn, elementIn):
     with open(f'bposEffParam_{elementIn}.eff', 'w') as file:
       file.write(f'''refinement {{
