@@ -29,7 +29,11 @@ class refinefdoubleprime:
         #   print("Cannot find Phenix installation. Try to run module load phenix")
         self.toignore = ("HOH", "BOG", "IXX", "GOL", "PEG")
         self.mtzIn = input("File location for MTZ: ")
+        shutil.copy(self.mtzIn, os.path.basename(self.mtzIn))
+        self.mtzIn = os.path.basename(self.mtzIn)
         self.pdbIn = input("File location for PDB: ")
+        shutil.copy(self.pdbIn, os.path.basename(self.pdbIn))
+        self.pdbIn = os.path.basename(self.pdbIn)
         shutil.copy(self.pdbIn, self.pdbIn + ".orig")
         self.projIn = input("Name of project: ")
 
