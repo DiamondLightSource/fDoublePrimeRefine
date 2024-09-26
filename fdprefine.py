@@ -11,6 +11,7 @@ import plotly.graph_objects as go
 import plotly.io as pio
 from multiprocessing import Pool
 from halo import Halo
+import numpy as np
 
 lookup_path = "/dls/science/groups/i23/scripts/chris/phenix_automation/lookup"
 cwd = os.getcwd()
@@ -192,9 +193,9 @@ class refinefdoubleprime:
                 m[0],
                 int(m[1]),
                 m[2],
-                float(m[3]),
-                float(closestValues[1]),
-                float(abs(float(closestValues[1]) - (float(m[3])))),
+                np.round(float(m[3]), 4),
+                np.round(float(closestValues[1]), 4),
+                np.round(float(abs(float(closestValues[1]) - (float(m[3])))), 4),
             )
             for m in matches
         ]
