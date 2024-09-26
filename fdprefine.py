@@ -1,5 +1,6 @@
 #!/dls/science/groups/i23/pyenvs/tihana_conda/bin/python
 import os
+import shutil
 import re
 from iotbx import reflection_file_reader
 import iotbx
@@ -25,10 +26,42 @@ class refinefdoubleprime:
         #   print("Found Phenix installation")
         # except:
         #   print("Cannot find Phenix installation. Try to run module load phenix")
-
+        self.toignore = ("HOH", "BOG", "IXX", "GOL", "PEG")
         self.mtzIn = input("File location for MTZ: ")
         self.pdbIn = input("File location for PDB: ")
+        shutil.copy(self.pdbIn, self.pdbIn + ".orig")
         self.projIn = input("Name of project: ")
+
+        with open(self.pdbIn, 'r') as infile:
+            lines = infile.readlines()
+        
+        cleanedLines = []
+        skip = 0
+        for i, line in enumerate(lines):
+            if skip > 0:
+                skip -= 1
+                continue
+            
+            if line.startswith("ANISOU"):
+                continue
+            
+            if "TLS DETAILS." in line:
+                skip = 17
+                continue
+            
+            if "TLS DETAILS" in line:
+                skip = 2
+                continue
+            
+            if "TLS GROUP :" in line:
+                skip = 16
+                continue
+
+            cleanedLines.append(line)
+
+        with open(self.pdbIn, 'w') as outfile:
+            outfile.writelines(cleanedLines)
+
         genMonomerLib = input("Do you have ligands in the PDB file? (y/n) ").lower()
         if genMonomerLib == "y":
             with Halo(
@@ -43,9 +76,12 @@ class refinefdoubleprime:
                     pdbInBase, pdbInExt = self.pdbIn.rsplit(".", 1)
                     pdbInBase = os.path.basename(pdbInBase)
                     self.ligandIn = str(pdbInBase + ".ligands.cif")
+                    if not os.path.exists(self.ligandIn):
+                        self.ligandIn = str(None)
         else:
             self.ligandIn = str(None)
             self.toignore = ("HOH", "BOG", "IXX", "GOL", "PEG")
+        print("")
 
         elementsToTry = input("Which elements to try, comma separated: ")
         self.elements = [x.strip() for x in elementsToTry.split(",")]
@@ -121,7 +157,7 @@ class refinefdoubleprime:
                     lineList[76:78] = elementSymbol
                     toWrite[i] = "".join(lineList)
                     toFDPRefine.append(
-                        [element, line[21:22].strip(), line[23:26].strip()]
+                        [element, line[21:22].strip(), line[22:26].strip()]
                     )
 
             with open(f"{pdbInBase}_{element}.{pdbInExt}", "w") as pdbOut:
@@ -132,6 +168,7 @@ class refinefdoubleprime:
                 self.pdbList.append(
                     (f"{pdbInBase}_{element}.{pdbInExt}", element, toFDPRefine)
                 )
+
 
     def scrapeLastAnomalousGroupData(self, ele, closestValues):
         log_file_path = f"{self.projIn}_fdp_{ele}_1.log"
