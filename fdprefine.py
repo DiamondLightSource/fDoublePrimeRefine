@@ -224,6 +224,61 @@ class refinefdoubleprime:
             ]
         )
         pio.write_html(fig, f"{self.projIn}.html")
+    
+    # needs testing...    
+    def makeTable2(self):
+        header = [
+        "Chain",
+        "ResidID",
+        "Element",
+        "Refined FDP",
+        "Theoretical FDP",
+        "Absolute Difference",
+    ]
+    
+        flattenedData = [item for sublist in self.scrapedData for item in sublist]
+    
+        rows_html = ""
+        for row in flattenedData:
+            row_html = "<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>"
+            rows_html += row_html
+
+        html_template = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Sortable Table</title>
+            <!-- DataTables CSS -->
+            <link rel="stylesheet" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
+            <!-- jQuery -->
+            <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+            <!-- DataTables JS -->
+            <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
+            <script>
+                $(document).ready(function() {{
+                    $('#sortableTable').DataTable();
+                }});
+            </script>
+        </head>
+        <body>
+            <table id="sortableTable" class="display">
+                <thead>
+                    <tr>
+                        {"".join(f"<th>{col}</th>" for col in header)}
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows_html}
+                </tbody>
+            </table>
+        </body>
+        </html>
+        """
+        
+        with open(f"{self.projIn}.html", "w") as f:
+            f.write(html_template)
 
     def runBPos(self, pdbIn, elementIn):
         with open(f"bposEffParam_{elementIn}.eff", "w") as file:
