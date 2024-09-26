@@ -32,34 +32,34 @@ class refinefdoubleprime:
         shutil.copy(self.pdbIn, self.pdbIn + ".orig")
         self.projIn = input("Name of project: ")
 
-        with open(self.pdbIn, 'r') as infile:
+        with open(self.pdbIn, "r") as infile:
             lines = infile.readlines()
-        
+
         cleanedLines = []
         skip = 0
         for i, line in enumerate(lines):
             if skip > 0:
                 skip -= 1
                 continue
-            
+
             if line.startswith("ANISOU"):
                 continue
-            
+
             if "TLS DETAILS." in line:
                 skip = 17
                 continue
-            
+
             if "TLS DETAILS" in line:
                 skip = 2
                 continue
-            
+
             if "TLS GROUP :" in line:
                 skip = 16
                 continue
 
             cleanedLines.append(line)
 
-        with open(self.pdbIn, 'w') as outfile:
+        with open(self.pdbIn, "w") as outfile:
             outfile.writelines(cleanedLines)
 
         genMonomerLib = input("Do you have ligands in the PDB file? (y/n) ").lower()
@@ -168,7 +168,6 @@ class refinefdoubleprime:
                 self.pdbList.append(
                     (f"{pdbInBase}_{element}.{pdbInExt}", element, toFDPRefine)
                 )
-
 
     def scrapeLastAnomalousGroupData(self, ele, closestValues):
         log_file_path = f"{self.projIn}_fdp_{ele}_1.log"
