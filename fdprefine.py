@@ -27,14 +27,23 @@ class refinefdoubleprime:
         #   print("Found Phenix installation")
         # except:
         #   print("Cannot find Phenix installation. Try to run module load phenix")
-        self.toignore = ("HOH", "BOG", "IXX", "GOL", "PEG")
+        self.toignore = ("HOH", "BOG", "IXX", "GOL", "PEG", "ATP")
         self.mtzIn = input("File location for MTZ: ")
-        shutil.copy(self.mtzIn, os.path.join(cwd, os.path.basename(self.mtzIn)))
+        if os.path.exists(self.mtzIn):
+            pass
+        else:  
+            shutil.copy(self.mtzIn, os.path.join(cwd, os.path.basename(self.mtzIn)))
         self.mtzIn = os.path.basename(self.mtzIn)
         self.pdbIn = input("File location for PDB: ")
-        shutil.copy(self.pdbIn, os.path.join(os.path.basename(self.pdbIn)))
+        if os.path.exists(self.pdbIn):
+            pass
+        else:
+            shutil.copy(self.pdbIn, os.path.join(os.path.basename(self.pdbIn)))
         self.pdbIn = os.path.basename(self.pdbIn)
-        shutil.copy(self.pdbIn, self.pdbIn + ".orig")
+        if os.path.exists(os.path.join(self.pdbIn + ".orig")):
+            pass
+        else:
+            shutil.copy(self.pdbIn, self.pdbIn + ".orig")
         self.projIn = input("Name of project: ")
 
         with open(self.pdbIn, "r") as infile:
@@ -85,7 +94,6 @@ class refinefdoubleprime:
                         self.ligandIn = str(None)
         else:
             self.ligandIn = str(None)
-            self.toignore = ("HOH", "BOG", "IXX", "GOL", "PEG")
         print("")
 
         elementsToTry = input("Which elements to try, comma separated: ")
