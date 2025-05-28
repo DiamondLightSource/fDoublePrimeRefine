@@ -82,7 +82,7 @@ class refinefdoubleprime:
                 text="Generating monomer library, this should only take a few minutes...",
                 spinner="toggle",
             ):
-                logFile = f"monomerlib_output.log"
+                logFile = "monomerlib_output.log"
                 with open(logFile, "a") as log:
                     subprocess.run(
                         ["phenix.ready_set", f"{self.pdbIn}"], stdout=log, stderr=log
