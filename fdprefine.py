@@ -301,6 +301,12 @@ class refinefdoubleprime:
         unit_cell = {self.unit_cell_strip}
         space_group = {self.space_group}
       }}
+      pdb_interpretation {{
+        allow_polymer_cross_special_position = True
+        restraints_library {{
+          cdl = False
+        }}
+      }}
       input {{  
         pdb {{  
           file_name = "{pdbIn}"  
@@ -384,7 +390,13 @@ class refinefdoubleprime:
 			crystal_symmetry {{
         unit_cell = {self.unit_cell_strip}
         space_group = {self.space_group}
-      }}  
+      }} 
+      pdb_interpretation {{
+        allow_polymer_cross_special_position = True
+        restraints_library {{
+          cdl = False
+        }}
+    }}
       input {{  
         pdb {{  
           file_name = "{self.projIn}_bpos_{elementIn}_1.pdb"  
