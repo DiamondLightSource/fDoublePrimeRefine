@@ -222,10 +222,20 @@ class refinefdoubleprime:
             "Refined FDP",
             "Theoretical FDP",
             "Absolute Difference",
+            "Percentage Difference"
         ]
         flattenedData = [item for sublist in self.scrapedData for item in sublist]
-        tableData = list(map(list, zip(*flattenedData)))
-
+        newData = []
+        for row in flattenedData:
+            theoretical = row[4]
+            abs_diff = row[5]
+            if theoretical != 0:
+                perc_diff = np.round(((abs_diff - theoretical) / theoretical) * 100, 4)
+            else:
+                perc_diff = None
+            newData.append(row + (perc_diff,))
+        tableData = list(map(list, zip(*newData)))
+    
         fig = go.Figure(
             data=[
                 go.Table(
@@ -238,24 +248,33 @@ class refinefdoubleprime:
         )
         pio.write_html(fig, f"{self.projIn}.html")
     
-    # needs testing...    
     def makeTable2(self):
         header = [
-        "Chain",
-        "ResidID",
-        "Element",
-        "Refined FDP",
-        "Theoretical FDP",
-        "Absolute Difference",
-    ]
+            "Chain",
+            "ResidID",
+            "Element",
+            "Refined FDP",
+            "Theoretical FDP",
+            "Absolute Difference",
+            "Percentage Difference"
+        ]
     
         flattenedData = [item for sublist in self.scrapedData for item in sublist]
+        newRows = []
+        for row in flattenedData:
+            theoretical = row[4]
+            abs_diff = row[5]
+            if theoretical != 0:
+                perc_diff = np.round(((abs_diff - theoretical) / theoretical) * 100, 4)
+            else:
+                perc_diff = None
+            newRows.append(row + (perc_diff,))
     
         rows_html = ""
-        for row in flattenedData:
+        for row in newRows:
             row_html = "<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>"
             rows_html += row_html
-
+    
         html_template = f"""
         <!DOCTYPE html>
         <html lang="en">
