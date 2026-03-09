@@ -154,9 +154,17 @@ class refinefdoubleprime:
                 if changeHETATM.lower() in ("y", "yes"):
                     toChange.append(line)
 
+        # Collect all residue IDs already used in the PDB
+        allResIds = set()
+        for line in pdbLinesWrite:
+            if line.startswith(("ATOM", "HETATM")):
+                allResIds.add(int(line[22:26]))
+        nextResId = max(allResIds) + 1
+
         for element in self.elements:
             toFDPRefine = []
             toWrite = copy.deepcopy(pdbLinesWrite)
+            seenAtoms = set()
             for i, line in enumerate(pdbLinesWrite):
                 if line in toChange:
                     elementSymbol = (
@@ -164,13 +172,21 @@ class refinefdoubleprime:
                     )
                     residueName = element.rjust(3)[:3]
                     elementName = element.ljust(4)[:4]
+                    chain = line[21:22]
+                    resid = line[22:26].strip()
+                    atomKey = (chain.strip(), resid, elementName)
+                    if atomKey in seenAtoms:
+                        resid = str(nextResId)
+                        nextResId += 1
+                    seenAtoms.add((chain.strip(), resid, elementName))
                     lineList = list(line)
                     lineList[12:16] = elementName
                     lineList[17:20] = residueName
+                    lineList[22:26] = resid.rjust(4)
                     lineList[76:78] = elementSymbol
                     toWrite[i] = "".join(lineList)
                     toFDPRefine.append(
-                        [element, line[21:22].strip(), line[22:26].strip()]
+                        [element, chain.strip(), resid]
                     )
 
             with open(f"{pdbInBase}_{element}.{pdbInExt}", "w") as pdbOut:
@@ -184,6 +200,12 @@ class refinefdoubleprime:
 
     def scrapeLastAnomalousGroupData(self, ele, closestValues):
         log_file_path = f"{self.projIn}_fdp_{ele}_1.log"
+        if not os.path.exists(log_file_path):
+            print(
+                f"Warning: Log file '{log_file_path}' not found for element {ele}. "
+                f"phenix.refine may have failed — check {ele}_output.log for details."
+            )
+            return
         with open(log_file_path, "r") as file:
             content = file.read()
 
@@ -386,10 +408,15 @@ class refinefdoubleprime:
 
         logFile = f"{elementIn}_output.log"
         with open(logFile, "a") as log:
-            subprocess.run(
+            result = subprocess.run(
                 ["phenix.refine", f"bposEffParam_{elementIn}.eff"],
                 stdout=log,
                 stderr=log,
+            )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"phenix.refine (bpos) failed for {elementIn} with return code {result.returncode}. "
+                f"Check {logFile} for details."
             )
 
     def runFdp(self, elementIn, toFDPRefine, closestValues):
@@ -476,10 +503,15 @@ class refinefdoubleprime:
 
         logFile = f"{elementIn}_output.log"
         with open(logFile, "a") as log:
-            subprocess.run(
+            result = subprocess.run(
                 ["phenix.refine", f"fdpEffParam_{elementIn}.eff"],
                 stdout=log,
                 stderr=log,
+            )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"phenix.refine (fdp) failed for {elementIn} with return code {result.returncode}. "
+                f"Check {logFile} for details."
             )
 
 
@@ -489,8 +521,10 @@ def runParallel(args):
         closestValues = run.lookup_fprime(ele)
         run.runBPos(pdbIn=pdb, elementIn=ele)
         run.runFdp(elementIn=ele, toFDPRefine=tfdpr, closestValues=closestValues)
+    except RuntimeError as e:
+        print(f"\nError processing {pdb} ({ele}): {e}")
     except Exception as e:
-        print(f"Error processing {pdb}: {e}")
+        print(f"\nUnexpected error processing {pdb} ({ele}): {e}")
 
 
 if __name__ == "__main__":
