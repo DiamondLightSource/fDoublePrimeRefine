@@ -184,6 +184,12 @@ class refinefdoubleprime:
 
     def scrapeLastAnomalousGroupData(self, ele, closestValues):
         log_file_path = f"{self.projIn}_fdp_{ele}_1.log"
+        if not os.path.exists(log_file_path):
+            print(
+                f"Warning: Log file '{log_file_path}' not found for element {ele}. "
+                f"phenix.refine may have failed — check {ele}_output.log for details."
+            )
+            return
         with open(log_file_path, "r") as file:
             content = file.read()
 
@@ -313,10 +319,11 @@ class refinefdoubleprime:
             f.write(html_template)
 
     def runBPos(self, pdbIn, elementIn):
+        prefix = f"{self.projIn}_bpos_{str(elementIn)}"
         with open(f"bposEffParam_{elementIn}.eff", "w") as file:
             file.write(
                 f'''refinement {{
-      crystal_symmetry {{  
+      crystal_symmetry {{
         unit_cell = {self.unit_cell_strip}
         space_group = {self.space_group}
       }}
@@ -326,70 +333,65 @@ class refinefdoubleprime:
           cdl = False
         }}
       }}
-      input {{  
-        pdb {{  
-          file_name = "{pdbIn}"  
-        }}  
-        xray_data {{  
-          file_name = "{self.mtzIn}"
-          labels = IMEAN,SIGIMEAN  
-          r_free_flags {{  
-            file_name = "{self.mtzIn}"
-            label = FreeR_flag  
-            test_flag_value = 0  
-          }}  
-        }}    
-		    monomers {{
-		      file_name = {self.ligandIn}
+      output {{
+        job_title = """{self.projIn}"""
+        write_def_file = False
+      }}
+      electron_density_maps {{
+        map_coefficients {{
+          map_type = 2mFo-DFc
+          mtz_label_amplitudes = 2FOFCWT
+          mtz_label_phases = PH2FOFCWT
+          fill_missing_f_obs = True
         }}
-      }}  
-      output {{  
-        prefix = """{self.projIn}_bpos_{str(elementIn)}"""   
-        job_title = """{self.projIn}"""  
-        serial_format = "%d"
-        write_def_file = False  
-      }}  
-      electron_density_maps {{  
-        map_coefficients {{  
-          map_type = 2mFo-DFc  
-          mtz_label_amplitudes = 2FOFCWT  
-          mtz_label_phases = PH2FOFCWT  
-          fill_missing_f_obs = True  
-        }}  
-        map_coefficients {{  
-          map_type = 2mFo-DFc  
-          mtz_label_amplitudes = 2FOFCWT_no_fill  
-          mtz_label_phases = PH2FOFCWT_no_fill  
-        }}  
-        map_coefficients {{  
-          map_type = mFo-DFc  
-          mtz_label_amplitudes = FOFCWT  
-          mtz_label_phases = PHFOFCWT  
-        }}  
-        map_coefficients {{  
-          map_type = anomalous  
-          mtz_label_amplitudes = ANOM  
-          mtz_label_phases = PHANOM  
-        }}  
-      }}  
-      refine {{  
-        strategy = *individual_sites individual_sites_real_space rigid_body \  
-                  *individual_adp group_adp tls occupancies group_anomalous  
-      }}  
-      main {{  
-        number_of_macro_cycles = 5  
+        map_coefficients {{
+          map_type = 2mFo-DFc
+          mtz_label_amplitudes = 2FOFCWT_no_fill
+          mtz_label_phases = PH2FOFCWT_no_fill
+        }}
+        map_coefficients {{
+          map_type = mFo-DFc
+          mtz_label_amplitudes = FOFCWT
+          mtz_label_phases = PHFOFCWT
+        }}
+        map_coefficients {{
+          map_type = anomalous
+          mtz_label_amplitudes = ANOM
+          mtz_label_phases = PHANOM
+        }}
+      }}
+      refine {{
+        strategy = *individual_sites individual_sites_real_space rigid_body \\
+                  *individual_adp group_adp tls occupancies group_anomalous
+      }}
+      main {{
+        number_of_macro_cycles = 5
         wavelength = {self.WV}
         nproc = {self.cpus}
-      }}   
+      }}
       }}'''
             )
 
+        cmd = [
+            "phenix.refine",
+            pdbIn,
+            self.mtzIn,
+            f"bposEffParam_{elementIn}.eff",
+            f"xray_data.labels=IMEAN,SIGIMEAN",
+            f"xray_data.r_free_flags.label=FreeR_flag",
+            f"xray_data.r_free_flags.test_flag_value=0",
+            f"output.prefix={prefix}",
+            f"output.serial_format=%d",
+        ]
+        if self.ligandIn != str(None):
+            cmd.append(self.ligandIn)
         logFile = f"{elementIn}_output.log"
         with open(logFile, "a") as log:
-            subprocess.run(
-                ["phenix.refine", f"bposEffParam_{elementIn}.eff"],
-                stdout=log,
-                stderr=log,
+            result = subprocess.run(cmd, stdout=log, stderr=log)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"phenix.refine (bpos) failed for {elementIn} with return code {result.returncode}. "
+                f"Check {logFile} for details."
             )
 
     def runFdp(self, elementIn, toFDPRefine, closestValues):
@@ -403,83 +405,80 @@ class refinefdoubleprime:
             anomalousScatterersStr += groupStr
         anomalousScatterersStr += "        }"
 
+        prefix = f"{self.projIn}_fdp_{elementIn}"
+        bposPdb = f"{self.projIn}_bpos_{elementIn}_1.pdb"
         with open(f"fdpEffParam_{elementIn}.eff", "w") as file:
             file.write(
-                f'''refinement {{  
-			crystal_symmetry {{
+                f'''refinement {{
+      crystal_symmetry {{
         unit_cell = {self.unit_cell_strip}
         space_group = {self.space_group}
-      }} 
+      }}
       pdb_interpretation {{
         allow_polymer_cross_special_position = True
         restraints_library {{
           cdl = False
         }}
-    }}
-      input {{  
-        pdb {{  
-          file_name = "{self.projIn}_bpos_{elementIn}_1.pdb"  
-        }}  
-        xray_data {{  
-          file_name = "{self.mtzIn}"
-          labels = I(+),SIGI(+),I(-),SIGI(-)
-          r_free_flags {{  
-            file_name = "{self.mtzIn}"
-            label = FreeR_flag  
-            test_flag_value = 0  
-          }}  
+      }}
+      output {{
+        job_title = """{self.projIn}_{elementIn}"""
+        write_def_file = False
+      }}
+      electron_density_maps {{
+        map_coefficients {{
+          map_type = 2mFo-DFc
+          mtz_label_amplitudes = 2FOFCWT
+          mtz_label_phases = PH2FOFCWT
+          fill_missing_f_obs = True
         }}
-        monomers {{
-		      file_name = {self.ligandIn}
+        map_coefficients {{
+          map_type = 2mFo-DFc
+          mtz_label_amplitudes = 2FOFCWT_no_fill
+          mtz_label_phases = PH2FOFCWT_no_fill
         }}
-      }}  
-      output {{  
-        prefix = """{self.projIn}_fdp_{elementIn}"""  
-        job_title = """{self.projIn}_{elementIn}"""  
-        serial_format = "%d"
-        write_def_file = False  
-      }}  
-      electron_density_maps {{  
-        map_coefficients {{  
-          map_type = 2mFo-DFc  
-          mtz_label_amplitudes = 2FOFCWT  
-          mtz_label_phases = PH2FOFCWT  
-          fill_missing_f_obs = True  
-        }}  
-        map_coefficients {{  
-          map_type = 2mFo-DFc  
-          mtz_label_amplitudes = 2FOFCWT_no_fill  
-          mtz_label_phases = PH2FOFCWT_no_fill  
-        }}  
-        map_coefficients {{  
-          map_type = mFo-DFc  
-          mtz_label_amplitudes = FOFCWT  
-          mtz_label_phases = PHFOFCWT  
-        }}  
-        map_coefficients {{  
-          map_type = anomalous  
-          mtz_label_amplitudes = ANOM  
-          mtz_label_phases = PHANOM  
-        }}  
-      }}  
-      refine {{  
-        strategy = individual_sites individual_sites_real_space rigid_body \   
-                  individual_adp group_adp tls occupancies *group_anomalous  
+        map_coefficients {{
+          map_type = mFo-DFc
+          mtz_label_amplitudes = FOFCWT
+          mtz_label_phases = PHFOFCWT
+        }}
+        map_coefficients {{
+          map_type = anomalous
+          mtz_label_amplitudes = ANOM
+          mtz_label_phases = PHANOM
+        }}
+      }}
+      refine {{
+        strategy = individual_sites individual_sites_real_space rigid_body \\
+                  individual_adp group_adp tls occupancies *group_anomalous
       	{anomalousScatterersStr}
       }}
-      main {{  
-        number_of_macro_cycles = 5  
+      main {{
+        number_of_macro_cycles = 5
         wavelength = {self.WV}
-      }}  
+      }}
       }}'''
             )
 
+        cmd = [
+            "phenix.refine",
+            bposPdb,
+            self.mtzIn,
+            f"fdpEffParam_{elementIn}.eff",
+            f"xray_data.labels=I(+),SIGI(+),I(-),SIGI(-)",
+            f"xray_data.r_free_flags.label=FreeR_flag",
+            f"xray_data.r_free_flags.test_flag_value=0",
+            f"output.prefix={prefix}",
+            f"output.serial_format=%d",
+        ]
+        if self.ligandIn != str(None):
+            cmd.append(self.ligandIn)
         logFile = f"{elementIn}_output.log"
         with open(logFile, "a") as log:
-            subprocess.run(
-                ["phenix.refine", f"fdpEffParam_{elementIn}.eff"],
-                stdout=log,
-                stderr=log,
+            result = subprocess.run(cmd, stdout=log, stderr=log)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"phenix.refine (fdp) failed for {elementIn} with return code {result.returncode}. "
+                f"Check {logFile} for details."
             )
 
 
@@ -489,8 +488,10 @@ def runParallel(args):
         closestValues = run.lookup_fprime(ele)
         run.runBPos(pdbIn=pdb, elementIn=ele)
         run.runFdp(elementIn=ele, toFDPRefine=tfdpr, closestValues=closestValues)
+    except RuntimeError as e:
+        print(f"\nError processing {pdb} ({ele}): {e}")
     except Exception as e:
-        print(f"Error processing {pdb}: {e}")
+        print(f"\nUnexpected error processing {pdb} ({ele}): {e}")
 
 
 if __name__ == "__main__":
